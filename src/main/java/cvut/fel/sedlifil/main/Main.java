@@ -24,7 +24,7 @@ public class Main {
 
         parserClass.split();
 
-       /* System.out.println("======BLOCK1==========");
+        System.out.println("======BLOCK1==========");
         parserClass.getClassPathWithCuMapBlock1().forEach((K, V) -> System.out.println(K));
         System.out.println("======BLOCK2==========");
         parserClass.getClassPathWithCuMapBlock2().forEach((K, V) -> System.out.println(K));
@@ -36,7 +36,7 @@ public class Main {
         System.out.println("======TIME==========");
         long elapsedTime = (new Date()).getTime() - startTime;
         System.out.println("Trvani: " + elapsedTime);
-*/
+
         System.out.println("================kjhkjhkjh========");
         FileHandlerParser fhp = new FileHandlerParser(filePath);
         fhp.saveAppToFile(parserClass.getClassPathWithCuMapBlock1(),

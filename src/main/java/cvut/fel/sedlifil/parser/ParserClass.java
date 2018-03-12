@@ -1,4 +1,4 @@
-package cvut.fel.sedlifil.main;
+package cvut.fel.sedlifil.parser;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
@@ -9,6 +9,9 @@ import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr;
 import com.github.javaparser.ast.imports.ImportDeclaration;
 import com.github.javaparser.ast.visitor.VoidVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
+import cvut.fel.sedlifil.configFile.ClassWithMethods;
+import cvut.fel.sedlifil.configFile.IConfigFileHandler;
+import cvut.fel.sedlifil.fileHandler.IFileHandlerParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,12 +33,14 @@ import java.util.stream.Collectors;
 public class ParserClass {
 
     private final String filePath;
+    private final IFileHandlerParser fileHandlerParser;
+    private final IConfigFileHandler configFileHandler;
 
     private Map<String, CompilationUnit> classPathWithCuMap;
     private Map<String, CompilationUnit> classPathWithCuMapBlock1;
     private Map<String, CompilationUnit> classPathWithCuMapBlock2;
     private Map<String, CompilationUnit> classPathWithCuMapBlock3;
-    private List<String> filesToAllBlock;
+    private List<String> filesToAllBlocks;
     private boolean flagUnCategorized = true;
     public static final String BLOCK_ = "Block";
     public static final String BLOCK1_ = "key1";
@@ -44,20 +49,24 @@ public class ParserClass {
     public static final String FILE_DELIMITER = File.separator;
     private static final String JAVA_SUFFIX = ".java";
     private static final String PomXML = "pom.xml";
+    public static final String JAVA_SOURCE  = ParserClass.FILE_DELIMITER + "src";
+    public static final String JAVA_TARGET  = "target";
 
     private Logger logger;
 
-    public ParserClass(String filePath) {
+    public ParserClass(IFileHandlerParser fileHandlerParser, IConfigFileHandler configFileHandler, String filePath) {
+        this.fileHandlerParser = fileHandlerParser;
+        this.configFileHandler = configFileHandler;
         this.filePath = filePath;
         classPathWithCuMap = new HashMap<>();
         classPathWithCuMapBlock1 = new HashMap<>();
         classPathWithCuMapBlock2 = new HashMap<>();
         classPathWithCuMapBlock3 = new HashMap<>();
-        filesToAllBlock = new ArrayList<>();
+        filesToAllBlocks = new ArrayList<>();
         logger = LoggerFactory.getLogger(ParserClass.class);
     }
 
-    public void split() {
+    public void divideIntoBlocks() {
         findAllClasses();
         splitToBlocks();
 
@@ -65,6 +74,16 @@ public class ParserClass {
         methodParser.categorizeMethods(classPathWithCuMapBlock1, BLOCK1_);
         methodParser.categorizeMethods(classPathWithCuMapBlock2, BLOCK2_);
         methodParser.categorizeMethods(classPathWithCuMapBlock3, BLOCK3_);
+
+        fileHandlerParser.saveAppToFile(classPathWithCuMapBlock1,
+                classPathWithCuMapBlock2,
+                classPathWithCuMapBlock3,
+                filesToAllBlocks);
+
+        configFileHandler.generateConfigFile(classPathWithCuMapBlock1,
+                classPathWithCuMapBlock2,
+                classPathWithCuMapBlock3);
+
     }
 
     private void findAllClasses() {
@@ -97,7 +116,7 @@ public class ParserClass {
                 directories.add(file.getName());
             } else if (file.getName().equals(PomXML)) {
                 //System.out.println("POM " + absPath.toString().concat(FILE_DELIMITER + file.getName()));
-                filesToAllBlock.add(absPath.toString().concat(FILE_DELIMITER + file.getName()));
+                filesToAllBlocks.add(absPath.toString().concat(FILE_DELIMITER + file.getName()));
             }
         }
         classNameList.forEach(y -> saveClass(absPath.toString().concat(FILE_DELIMITER + y)));
@@ -117,19 +136,6 @@ public class ParserClass {
         CompilationUnit cu;
         try {
             cu = JavaParser.parse(new FileInputStream(path));
-
-            /* pro vytvoreni ClassWithMethods------
-            List<String> methodNames = new ArrayList<>();
-            VoidVisitor<List<String>> methodVisitor = new MethodNamePrinter();
-            methodVisitor.visit(cu, methodNames);
-            String className;
-            if (path.contains("/")) {
-                className = path.substring(path.lastIndexOf('/') + 1, path.length());
-            } else {
-                className = path;
-            }
-            ClassWithMethods classWithMethods = new ClassWithMethods(className, path, methodNames);
-            */
 
             //zavolani tridy ClassVisitor a ulozeni vsech anotaci do listu
             List<AnnotationExpr> annotationClassList = new ArrayList<>();
@@ -223,7 +229,7 @@ public class ParserClass {
      */
     private List<String> tryCategorizedList(String classNameWithPath, CompilationUnit cu, List<String> list) {
         List<String> resultList = new ArrayList<>();
-        list.stream().forEach(y -> {
+        list.forEach(y -> {
             for (Map.Entry<String, CompilationUnit> entry : classPathWithCuMapBlock1.entrySet()) {
                 if (entry.getKey().substring(0, entry.getKey().lastIndexOf(".")).endsWith(y)) {
                     classPathWithCuMapBlock1.put(classNameWithPath, cu);
@@ -396,43 +402,7 @@ public class ParserClass {
         }).collect(Collectors.toList());
     }
 
-    public void printAllClasses() {
-        List<String> results = new ArrayList<>();
 
-        /* */
-        File[] files = new File(filePath).listFiles(new FilenameFilter() {
-            @Override
-            public boolean accept(File dir, String name) {
-                return name.endsWith(".java");
-            }
-        });
-
-        for (File file : files) {
-            if (file.isFile()) {
-                results.add(file.getName());
-            }
-        }
-
-        System.out.println("Size of all finded classes:" + results.size());
-
-
-        List<ClassWithMethods> listOfClass = results.stream()
-                .map(y -> {
-                    CompilationUnit cu = null;
-                    try {
-                        cu = JavaParser.parse(new FileInputStream(filePath.concat(FILE_DELIMITER + y)));
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
-                    }
-                    List<String> methodNames = new ArrayList<>();
-                    VoidVisitor<List<String>> methodVisitor = new MethodNamePrinter();
-                    methodVisitor.visit(cu, methodNames);
-
-                    return new ClassWithMethods(y, filePath, methodNames);
-                }).collect(Collectors.toList());
-
-        listOfClass.forEach(System.out::println);
-    }
 
     public Map<String, CompilationUnit> getClassPathWithCuMap() {
         return classPathWithCuMap;
@@ -450,8 +420,8 @@ public class ParserClass {
         return classPathWithCuMapBlock3;
     }
 
-    public List<String> getFilesToAllBlock() {
-        return filesToAllBlock;
+    public List<String> getFilesToAllBlocks() {
+        return filesToAllBlocks;
     }
 
     /**
@@ -462,14 +432,6 @@ public class ParserClass {
         public void visit(ClassOrInterfaceDeclaration n, List<AnnotationExpr> collector) {
             super.visit(n, collector);
             collector.addAll(n.getAnnotations());
-        }
-    }
-
-    private static class MethodNamePrinter extends VoidVisitorAdapter<List<String>> {
-        @Override
-        public void visit(MethodDeclaration md, List<String> collector) {
-            super.visit(md, collector);
-            collector.add(md.getNameAsString());
         }
     }
 

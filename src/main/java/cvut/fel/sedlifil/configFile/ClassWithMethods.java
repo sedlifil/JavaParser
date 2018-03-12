@@ -1,4 +1,4 @@
-package cvut.fel.sedlifil.main;
+package cvut.fel.sedlifil.configFile;
 
 import java.util.List;
 
@@ -10,14 +10,13 @@ import org.slf4j.Logger;
  */
 public class ClassWithMethods {
     private String className;
-    private String path;
     private List<String> methodsList;
-    private Logger logger;
+    private String block;
 
-    public ClassWithMethods(String className, String path, List<String> methodsList) {
+    ClassWithMethods(String className, List<String> methodsList, String block) {
         this.className = className;
-        this.path = path;
         this.methodsList = methodsList;
+        this.block = block;
     }
 
     public String getClassName() {
@@ -28,14 +27,11 @@ public class ClassWithMethods {
         return methodsList;
     }
 
-    public String getPath() {
-        return path;
-    }
 
     @Override
     public String toString() {
         String res = className + "{\n" +
-                "path= " + path + "\n" +
+                "block= " + block + "\n" +
                 "methodsList=\n\t";
         res += String.join("\n\t", methodsList);
         res += "\n}";

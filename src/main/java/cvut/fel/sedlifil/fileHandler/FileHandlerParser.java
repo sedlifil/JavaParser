@@ -1,6 +1,7 @@
-package cvut.fel.sedlifil.main;
+package cvut.fel.sedlifil.fileHandler;
 
 import com.github.javaparser.ast.CompilationUnit;
+import cvut.fel.sedlifil.parser.ParserClass;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -16,21 +17,21 @@ import java.util.Map;
 /**
  * Created by filip on 09.12.17.
  */
-public class FileHandlerParser {
-    private Path absFilePath;
-    private String pathOfParser;
-    private static final String JAVA_SOURCE  = ParserClass.FILE_DELIMITER + "src";
-    private static final String JAVA_TARGET  = "target";
+public class FileHandlerParser implements IFileHandlerParser{
+    private String locationOfDirectory;
     private static final String DATE_PATTERN = "yyyy_MM_dd_HH-mm-ss";
     private static final String APP_NONAME = "unKnown";
 
-    public FileHandlerParser(String absFilePath) {
-        this.absFilePath = Paths.get(absFilePath).toAbsolutePath();
-        pathOfParser = FileHandlerParser.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-        pathOfParser = pathOfParser.substring(0, pathOfParser.indexOf(JAVA_TARGET)-1);
+    public FileHandlerParser(String locationOfDirectory) {
+        this.locationOfDirectory = Paths.get(locationOfDirectory).toAbsolutePath().toString();
     }
 
+    public FileHandlerParser() {
+        locationOfDirectory = FileHandlerParser.class.getProtectionDomain().getCodeSource().getLocation().getPath();
+        locationOfDirectory = locationOfDirectory.substring(0, locationOfDirectory.indexOf(ParserClass.JAVA_TARGET)-1);
+    }
 
+    @Override
     public void saveAppToFile(Map<String, CompilationUnit> listBlock1,
                               Map<String, CompilationUnit> listBlock2,
                               Map<String, CompilationUnit> listBlock3,
@@ -51,7 +52,7 @@ public class FileHandlerParser {
             return;
         }
 
-        String directoryOfApp = pathOfParser + AppName + dateFormat.format(date);
+        String directoryOfApp = locationOfDirectory + AppName + dateFormat.format(date);
 
         if (!Files.exists(Paths.get(directoryOfApp))) {
             try {
@@ -70,8 +71,8 @@ public class FileHandlerParser {
 
     private void saveBlockAppToFile(Map<String, CompilationUnit> blockList, String directoryOfApp, String blockName){
         blockList.forEach((class_, cu) -> {
-            String class_Path = class_.substring(class_.indexOf(JAVA_SOURCE), class_.lastIndexOf(ParserClass.FILE_DELIMITER));
-            String class_PathWithName = class_.substring(class_.indexOf(JAVA_SOURCE), class_.length());
+            String class_Path = class_.substring(class_.indexOf(ParserClass.JAVA_SOURCE), class_.lastIndexOf(ParserClass.FILE_DELIMITER));
+            String class_PathWithName = class_.substring(class_.indexOf(ParserClass.JAVA_SOURCE), class_.length());
             try {
                 Path fileName = Paths.get(directoryOfApp + ParserClass.FILE_DELIMITER + blockName + class_PathWithName);
                 Files.createDirectories(Paths.get(directoryOfApp + ParserClass.FILE_DELIMITER + blockName + class_Path));
@@ -133,7 +134,7 @@ public class FileHandlerParser {
 
 
     private String getAppNameFromPath(String path){
-        String AppName = path.substring(0, path.indexOf(JAVA_SOURCE));
+        String AppName = path.substring(0, path.indexOf(ParserClass.JAVA_SOURCE));
         AppName = AppName.substring(AppName.lastIndexOf(ParserClass.FILE_DELIMITER, AppName.length()));
         return AppName;
     }

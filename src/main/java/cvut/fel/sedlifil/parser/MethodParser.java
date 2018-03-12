@@ -1,4 +1,4 @@
-package cvut.fel.sedlifil.main;
+package cvut.fel.sedlifil.parser;
 
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
@@ -36,7 +36,7 @@ public class MethodParser {
 
                 SingleMemberAnnotationExpr nax = (SingleMemberAnnotationExpr) ann;
 
-                System.out.println(nax.getMemberValue());
+                //System.out.println(nax.getMemberValue());
 
                 if (!nax.getMemberValue().toString().contains(block)) {
                     methodDeclaration.remove();

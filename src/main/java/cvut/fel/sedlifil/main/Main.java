@@ -1,5 +1,12 @@
 package cvut.fel.sedlifil.main;
 
+import cvut.fel.sedlifil.configFile.ConfigFileHandler;
+import cvut.fel.sedlifil.configFile.IConfigFileHandler;
+import cvut.fel.sedlifil.fileHandler.FileHandlerParser;
+import cvut.fel.sedlifil.fileHandler.IFileHandlerParser;
+import cvut.fel.sedlifil.parser.ParserClass;
+import org.apache.log4j.BasicConfigurator;
+
 import java.util.Date;
 
 public class Main {
@@ -20,9 +27,12 @@ public class Main {
 
 
         long startTime = System.currentTimeMillis();
-        ParserClass parserClass = new ParserClass(filePath);
+        BasicConfigurator.configure();
+        IFileHandlerParser fileHandlerParser = new FileHandlerParser();
+        IConfigFileHandler configFileHandler = new ConfigFileHandler();
+        ParserClass parserClass = new ParserClass(fileHandlerParser, configFileHandler, filePath);
 
-        parserClass.split();
+        parserClass.divideIntoBlocks();
 
         System.out.println("======BLOCK1==========");
         parserClass.getClassPathWithCuMapBlock1().forEach((K, V) -> System.out.println(K));
@@ -36,14 +46,5 @@ public class Main {
         System.out.println("======TIME==========");
         long elapsedTime = (new Date()).getTime() - startTime;
         System.out.println("Trvani: " + elapsedTime);
-
-        System.out.println("================kjhkjhkjh========");
-        FileHandlerParser fhp = new FileHandlerParser(filePath);
-        fhp.saveAppToFile(parserClass.getClassPathWithCuMapBlock1(),
-                parserClass.getClassPathWithCuMapBlock2(),
-                parserClass.getClassPathWithCuMapBlock3(),
-                parserClass.getFilesToAllBlock());
-
-
     }
 }

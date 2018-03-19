@@ -6,14 +6,22 @@ import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr;
 import com.github.javaparser.ast.visitor.VoidVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class MethodParser {
+    private Logger logger;
+
+    MethodParser() {
+        logger = LoggerFactory.getLogger(MethodParser.class);
+    }
 
     public void categorizeMethods(Map<String, CompilationUnit> compilationUnitMap, String block) {
+        logger.info("starts to categorized methods into block with " + block + "...");
         List<MethodDeclaration> methodClassList = new ArrayList<>();
         VoidVisitor<List<MethodDeclaration>> methodDeclaration = new MethodName();
         compilationUnitMap.forEach((K, V) -> {
@@ -36,7 +44,7 @@ public class MethodParser {
 
                 SingleMemberAnnotationExpr nax = (SingleMemberAnnotationExpr) ann;
 
-                //System.out.println(nax.getMemberValue());
+               // System.out.println(nax.getMemberValue());
 
                 if (!nax.getMemberValue().toString().contains(block)) {
                     methodDeclaration.remove();
@@ -54,7 +62,7 @@ public class MethodParser {
         }
     }
 
-    private static class AnnotationMethodVisitor extends VoidVisitorAdapter<List<AnnotationExpr>> {
+    public static class AnnotationMethodVisitor extends VoidVisitorAdapter<List<AnnotationExpr>> {
         @Override
         public void visit(MethodDeclaration n, List<AnnotationExpr> collector) {
             super.visit(n, collector);

@@ -1,6 +1,7 @@
 package cvut.fel.sedlifil.configFile;
 
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -12,13 +13,13 @@ import org.slf4j.LoggerFactory;
 /**
  * Created by filip on 03.11.17.
  */
-public class ClassWithMethods {
+public class ClassWithMethodsPath {
     private String className;
     private String block;
-    private List<String> methodList;
+    private Map<String, String> methodList;
     private Logger logger;
 
-    ClassWithMethods(String className, List<String> methodsList, String block) {
+    ClassWithMethodsPath(String className, Map<String, String> methodsList, String block) {
         if (className.contains(ParserClass.FILE_DELIMITER)) {
             this.className = className.substring(className.lastIndexOf(ParserClass.FILE_DELIMITER) + 1, className.lastIndexOf(ParserClass.JAVA_SUFFIX));
         } else {
@@ -33,7 +34,7 @@ public class ClassWithMethods {
         return className;
     }
 
-    public List<String> getMethodsList() {
+    public Map<String, String> getMethodList() {
         return methodList;
     }
 
@@ -54,13 +55,4 @@ public class ClassWithMethods {
 
     }
 
-    @Override
-    public String toString() {
-        String res = className + "{\n" +
-                "block= " + block + "\n" +
-                "methodsList=\n\t";
-        res += String.join("\n\t", methodList);
-        res += "\n}";
-        return res;
-    }
 }

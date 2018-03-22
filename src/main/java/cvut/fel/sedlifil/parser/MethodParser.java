@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -21,8 +22,9 @@ public class MethodParser {
 
     /**
      * method to categorize method of class into proper blocks
+     *
      * @param containerClassCUMap class
-     * @param block class belongs to block
+     * @param block               class belongs to block
      */
     public void categorizeMethods(Map<String, ContainerClassCU> containerClassCUMap, String block) {
         logger.info("starts to categorized methods into block with " + block + "...");
@@ -30,16 +32,17 @@ public class MethodParser {
         containerClassCUMap.forEach((K, containerClassCU) -> {
             List<MethodDeclaration> methodClassList;
             methodClassList = containerClassCU.getMethodNames();
-            methodClassList.forEach(y -> categorizeMethod(y, block));
+            methodClassList.forEach(y -> categorizeMethod(y, containerClassCU, block));
         });
     }
 
     /**
      * method to find annotation @Block of method and decide if belongs to given block or not
+     *
      * @param methodDeclaration method of class
-     * @param block class belongs to block
+     * @param block             class belongs to block
      */
-    private void categorizeMethod(MethodDeclaration methodDeclaration, String block) {
+    private void categorizeMethod(MethodDeclaration methodDeclaration, ContainerClassCU classCU, String block) {
         List<AnnotationExpr> annotationClassList = new ArrayList<>();
         VoidVisitor<List<AnnotationExpr>> annotationClassVisitor = new AnnotationMethodVisitor();
         annotationClassVisitor.visit(methodDeclaration, annotationClassList);
@@ -51,12 +54,21 @@ public class MethodParser {
                 }
                 SingleMemberAnnotationExpr nax = (SingleMemberAnnotationExpr) ann;
                 if (!nax.getMemberValue().toString().contains(block)) {
+                    methodInSomeBlockReport(nax.getMemberValue().toString(), methodDeclaration.getNameAsString(), classCU);
                     methodDeclaration.remove();
                     break;
                 }
             }
         }
     }
+
+    private void methodInSomeBlockReport(String tryingMethod, String methodName, ContainerClassCU containerClassCU) {
+        List<String> list = Arrays.asList(containerClassCU.getBelongToBlocks().split("\""));
+        if (list.stream().filter(w -> w.contains(ParserClass.UNIVERSAL_BLOCK_KEY)).noneMatch(tryingMethod::contains)){
+            logger.warn("method " + methodName + " from " + containerClassCU.getNameClass() + " is NOT generated in any block!!!");
+        }
+    }
+
     /**
      * Annotation method visitor
      * visitor fill in into list of AnnotationExpr all annotation of given method

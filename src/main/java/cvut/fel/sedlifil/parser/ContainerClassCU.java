@@ -35,13 +35,12 @@ public class ContainerClassCU {
         setUpName();
     }
 
-    private void setUpName(){
+    private void setUpName() {
         String list[] = nameClassWithAbsPath.split(ParserClass.FILE_DELIMITER);
-        nameClass = list[list.length-1];
+        nameClass = list[list.length - 1];
     }
 
     /**
-     *
      * @return name of class
      */
     public String getNameClass() {
@@ -49,7 +48,6 @@ public class ContainerClassCU {
     }
 
     /**
-     *
      * @return name with absolute path of class
      */
     public String getNameClassWithAbsPath() {
@@ -57,7 +55,6 @@ public class ContainerClassCU {
     }
 
     /**
-     *
      * @return compilation unit of class
      */
     public CompilationUnit getCompilationUnit() {
@@ -66,6 +63,7 @@ public class ContainerClassCU {
 
     /**
      * method to found all field variable of the class
+     *
      * @return list of variables
      */
     public List<VariableDeclarator> getFieldsFromClassList() {
@@ -102,6 +100,7 @@ public class ContainerClassCU {
 
     /**
      * method to get all implemented class names with path from given compilationUnit
+     *
      * @return list of implements path
      */
     public List<String> getImplementsFromClass() {
@@ -115,6 +114,7 @@ public class ContainerClassCU {
 
     /**
      * method to get all implemented and extended class name with path from given compilationUnit
+     *
      * @return list of extended and implemented class of container class
      */
     public List<String> getImplementsExtendedFromClass() {
@@ -143,7 +143,6 @@ public class ContainerClassCU {
     }
 
     /**
-     *
      * @return list of methods of container class
      */
     public List<MethodDeclaration> getMethodNames() {
@@ -154,7 +153,6 @@ public class ContainerClassCU {
     }
 
     /**
-     *
      * @return list of annotationExpr of container class, but only from class declaration
      */
     public List<AnnotationExpr> getClassAnnotations() {
@@ -167,7 +165,6 @@ public class ContainerClassCU {
     }
 
     /**
-     *
      * @return string which contains all values of blocks key
      */
     public String getBelongToBlocks() {

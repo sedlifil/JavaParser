@@ -119,6 +119,7 @@ public class RESTConfigFileHandler implements IConfigFileHandler {
 
     /**
      * method to decide if method of class has REST HTTP annotation
+     *
      * @param methodDeclaration method of class
      * @return decision if method of class is REST HTTP method
      */

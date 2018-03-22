@@ -16,11 +16,6 @@ public class Main {
     public static void main(String[] args) {
         String filePath = "/Users/filip/Dropbox/FEL_OI/semestr5/BookSystem/";
         String configFilePath = "/Users/filip/Dropbox/BookSystemFrontend/src/";
-
-        //Path fullPath = Paths.get(FILE_PATH);
-        //System.out.println("full " + fullPath.toString());
-        //Path abspath = fullPath.toAbsolutePath();
-        //System.out.println("abs " + abspath);
         if (args.length == 1){
             filePath = args[0];
         }

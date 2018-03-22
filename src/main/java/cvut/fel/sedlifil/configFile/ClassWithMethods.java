@@ -30,7 +30,6 @@ public class ClassWithMethods {
     }
 
     /**
-     *
      * @return class name
      */
     public String getClassName() {
@@ -38,7 +37,6 @@ public class ClassWithMethods {
     }
 
     /**
-     *
      * @return list of class methods
      */
     public List<String> getMethodsList() {
@@ -50,7 +48,6 @@ public class ClassWithMethods {
     }
 
     /**
-     *
      * @return class in json format
      */
     public String toJson() {

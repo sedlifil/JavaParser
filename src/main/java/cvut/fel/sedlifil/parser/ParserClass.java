@@ -34,6 +34,7 @@ public class ParserClass {
     private List<String> filesToAllBlocks;
     private boolean flagUnCategorized = true;
     public static final String BLOCK_ = "Block";
+    public static final String UNIVERSAL_BLOCK_KEY = "key";
     public static final String BLOCK1_ = "key1";
     public static final String BLOCK2_ = "key2";
     public static final String BLOCK3_ = "key3";

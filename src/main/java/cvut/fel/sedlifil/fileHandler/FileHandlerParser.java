@@ -27,7 +27,6 @@ public class FileHandlerParser implements IFileHandlerParser {
     private Logger logger;
 
     /**
-     *
      * @param locationOfDirectory location of directory where app will be saved
      */
     public FileHandlerParser(String locationOfDirectory) {
@@ -87,9 +86,10 @@ public class FileHandlerParser implements IFileHandlerParser {
 
     /**
      * save one block of divided app
-     * @param blockList list of class belongs to one block
+     *
+     * @param blockList      list of class belongs to one block
      * @param directoryOfApp location of directory where app will be saved
-     * @param blockName name of block
+     * @param blockName      name of block
      */
     private void saveBlockAppToFile(Map<String, ContainerClassCU> blockList, String directoryOfApp, String blockName) {
         blockList.forEach((class_, containerClassCU) -> {
@@ -109,9 +109,10 @@ public class FileHandlerParser implements IFileHandlerParser {
 
     /**
      * saving into all blocks all important files
-     * @param listOfPath list of absolute path of remaining files
+     *
+     * @param listOfPath     list of absolute path of remaining files
      * @param directoryOfApp location of directory where app will be saved
-     * @param AppName name of app
+     * @param AppName        name of app
      */
     private void saveAllBlocksAppToFile(List<String> listOfPath, String directoryOfApp, String AppName) {
         listOfPath.forEach(nameWithPath -> {
@@ -133,13 +134,14 @@ public class FileHandlerParser implements IFileHandlerParser {
 
     /**
      * method to create file of fileName and write into it from input file path
-     * @param AppName name of app
-     * @param fileName name of created file
-     * @param inputFilePath name of input file that is copied into new one
-     * @param directoryOfApp location of directory where app will be saved
-     * @param relativePath relative path, location for created file
+     *
+     * @param AppName              name of app
+     * @param fileName             name of created file
+     * @param inputFilePath        name of input file that is copied into new one
+     * @param directoryOfApp       location of directory where app will be saved
+     * @param relativePath         relative path, location for created file
      * @param relativePathWithName relative path with file name, location for created file
-     * @param block belongs to block
+     * @param block                belongs to block
      */
     private void saveFileToBlock(String AppName, String fileName, String inputFilePath, String directoryOfApp, String relativePath, String relativePathWithName, String block) {
         String fileDelimiter = ParserClass.FILE_DELIMITER;
@@ -165,9 +167,10 @@ public class FileHandlerParser implements IFileHandlerParser {
     /**
      * method to change name of app in file pom.xml to name with addition name of block
      * result -> AppNameBlock@, where @ is number of block
-     * @param AppName name of all
+     *
+     * @param AppName   name of all
      * @param fileArray byte array of the file
-     * @param block belongs to block
+     * @param block     belongs to block
      * @return changed byte array with new app name in pom.xml
      */
     private byte[] changeArtificialIdInPom(String AppName, byte[] fileArray, String block) {
@@ -196,6 +199,7 @@ public class FileHandlerParser implements IFileHandlerParser {
 
     /**
      * method to return app name without path
+     *
      * @param path path of app
      * @return name of app
      */

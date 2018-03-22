@@ -29,10 +29,18 @@ public class ClassWithMethods {
         logger = LoggerFactory.getLogger(ClassWithMethods.class);
     }
 
+    /**
+     *
+     * @return class name
+     */
     public String getClassName() {
         return className;
     }
 
+    /**
+     *
+     * @return list of class methods
+     */
     public List<String> getMethodsList() {
         return methodList;
     }
@@ -41,6 +49,10 @@ public class ClassWithMethods {
         return block;
     }
 
+    /**
+     *
+     * @return class in json format
+     */
     public String toJson() {
         ObjectMapper mapper = new ObjectMapper();
 
@@ -51,7 +63,6 @@ public class ClassWithMethods {
             logger.error("Error with mapping class " + className + " to Json!!!");
             return "";
         }
-
     }
 
     @Override

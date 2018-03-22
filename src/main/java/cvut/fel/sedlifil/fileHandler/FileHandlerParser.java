@@ -1,6 +1,6 @@
 package cvut.fel.sedlifil.fileHandler;
 
-import com.github.javaparser.ast.CompilationUnit;
+import cvut.fel.sedlifil.parser.ContainerClassCU;
 import cvut.fel.sedlifil.parser.ParserClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,13 +26,19 @@ public class FileHandlerParser implements IFileHandlerParser {
     private static final String APP_NONAME = "unKnown";
     private Logger logger;
 
-
+    /**
+     *
+     * @param locationOfDirectory location of directory where app will be saved
+     */
     public FileHandlerParser(String locationOfDirectory) {
         this.locationOfDirectory = Paths.get(locationOfDirectory).toAbsolutePath().toString();
         logger = LoggerFactory.getLogger(FileHandlerParser.class);
 
     }
 
+    /**
+     * generated app will be saved in default location of javaParser
+     */
     public FileHandlerParser() {
         locationOfDirectory = FileHandlerParser.class.getProtectionDomain().getCodeSource().getLocation().getPath();
         locationOfDirectory = locationOfDirectory.substring(0, locationOfDirectory.indexOf(ParserClass.JAVA_TARGET) - 1);
@@ -41,14 +47,15 @@ public class FileHandlerParser implements IFileHandlerParser {
     }
 
     @Override
-    public void saveAppToFile(Map<String, CompilationUnit> listBlock1,
-                              Map<String, CompilationUnit> listBlock2,
-                              Map<String, CompilationUnit> listBlock3,
+    public void saveAppToFile(Map<String, ContainerClassCU> listBlock1,
+                              Map<String, ContainerClassCU> listBlock2,
+                              Map<String, ContainerClassCU> listBlock3,
                               List<String> listAllBlock) {
         logger.info("starts to saving app into blocks...");
         DateFormat dateFormat = new SimpleDateFormat(DATE_PATTERN);
         Date date = new Date();
 
+        // find out name of app
         String AppName = APP_NONAME;
         if (listBlock1.entrySet().stream().findFirst().isPresent()) {
             AppName = getAppNameFromPath(listBlock1.entrySet().stream().findFirst().get().getKey());
@@ -57,11 +64,9 @@ public class FileHandlerParser implements IFileHandlerParser {
         } else if (listBlock3.entrySet().stream().findFirst().isPresent()) {
             AppName = getAppNameFromPath(listBlock3.entrySet().stream().findFirst().get().getKey());
         }
-
         if (AppName.equals(APP_NONAME)) {
             return;
         }
-
         String directoryOfApp = locationOfDirectory + AppName + dateFormat.format(date);
         logger.info("generated app is located in " + directoryOfApp + ".");
 
@@ -80,24 +85,34 @@ public class FileHandlerParser implements IFileHandlerParser {
         saveAllBlocksAppToFile(listAllBlock, directoryOfApp, AppName);
     }
 
-    private void saveBlockAppToFile(Map<String, CompilationUnit> blockList, String directoryOfApp, String blockName) {
-        blockList.forEach((class_, cu) -> {
+    /**
+     * save one block of divided app
+     * @param blockList list of class belongs to one block
+     * @param directoryOfApp location of directory where app will be saved
+     * @param blockName name of block
+     */
+    private void saveBlockAppToFile(Map<String, ContainerClassCU> blockList, String directoryOfApp, String blockName) {
+        blockList.forEach((class_, containerClassCU) -> {
             String class_Path = class_.substring(class_.indexOf(ParserClass.JAVA_SOURCE), class_.lastIndexOf(ParserClass.FILE_DELIMITER));
             String class_PathWithName = class_.substring(class_.indexOf(ParserClass.JAVA_SOURCE), class_.length());
             try {
                 Path fileName = Paths.get(directoryOfApp + ParserClass.FILE_DELIMITER + blockName + class_PathWithName);
                 Files.createDirectories(Paths.get(directoryOfApp + ParserClass.FILE_DELIMITER + blockName + class_Path));
                 Files.createFile(fileName);
-                Files.write(fileName, cu.toString().getBytes(StandardCharsets.UTF_8));
+                Files.write(fileName, containerClassCU.getCompilationUnit().toString().getBytes(StandardCharsets.UTF_8));
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
-
         });
     }
 
+    /**
+     * saving into all blocks all important files
+     * @param listOfPath list of absolute path of remaining files
+     * @param directoryOfApp location of directory where app will be saved
+     * @param AppName name of app
+     */
     private void saveAllBlocksAppToFile(List<String> listOfPath, String directoryOfApp, String AppName) {
         listOfPath.forEach(nameWithPath -> {
             int startOfPath = 0;
@@ -116,6 +131,16 @@ public class FileHandlerParser implements IFileHandlerParser {
 
     }
 
+    /**
+     * method to create file of fileName and write into it from input file path
+     * @param AppName name of app
+     * @param fileName name of created file
+     * @param inputFilePath name of input file that is copied into new one
+     * @param directoryOfApp location of directory where app will be saved
+     * @param relativePath relative path, location for created file
+     * @param relativePathWithName relative path with file name, location for created file
+     * @param block belongs to block
+     */
     private void saveFileToBlock(String AppName, String fileName, String inputFilePath, String directoryOfApp, String relativePath, String relativePathWithName, String block) {
         String fileDelimiter = ParserClass.FILE_DELIMITER;
         Path directoryPath = Paths.get(directoryOfApp + fileDelimiter + block + fileDelimiter + relativePath);
@@ -137,6 +162,14 @@ public class FileHandlerParser implements IFileHandlerParser {
         }
     }
 
+    /**
+     * method to change name of app in file pom.xml to name with addition name of block
+     * result -> AppNameBlock@, where @ is number of block
+     * @param AppName name of all
+     * @param fileArray byte array of the file
+     * @param block belongs to block
+     * @return changed byte array with new app name in pom.xml
+     */
     private byte[] changeArtificialIdInPom(String AppName, byte[] fileArray, String block) {
         AppName = AppName.replace(ParserClass.FILE_DELIMITER, "");
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -161,6 +194,11 @@ public class FileHandlerParser implements IFileHandlerParser {
         }
     }
 
+    /**
+     * method to return app name without path
+     * @param path path of app
+     * @return name of app
+     */
     private String getAppNameFromPath(String path) {
         String AppName = path.substring(0, path.indexOf(ParserClass.JAVA_SOURCE));
         AppName = AppName.substring(AppName.lastIndexOf(ParserClass.FILE_DELIMITER, AppName.length()));

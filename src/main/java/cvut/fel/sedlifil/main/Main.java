@@ -35,11 +35,11 @@ public class Main {
         parserClass.divideIntoBlocks();
 /*
         System.out.println("======BLOCK1==========");
-        parserClass.getClassPathWithCuMapBlock1().forEach((K, V) -> System.out.println(K));
+        parserClass.getContainerClassCuMapBlock1().forEach((K, V) -> System.out.println(K));
         System.out.println("======BLOCK2==========");
-        parserClass.getClassPathWithCuMapBlock2().forEach((K, V) -> System.out.println(K));
+        parserClass.getContainerClassCuMapBlock2().forEach((K, V) -> System.out.println(K));
         System.out.println("======BLOCK3==========");
-        parserClass.getClassPathWithCuMapBlock3().forEach((K, V) -> System.out.println(K));
+        parserClass.getContainerClassCuMapBlock3().forEach((K, V) -> System.out.println(K));
         System.out.println("======REST==========");
         parserClass.getClassPathWithCuMap().forEach((K,V) -> System.out.println(K));
 */

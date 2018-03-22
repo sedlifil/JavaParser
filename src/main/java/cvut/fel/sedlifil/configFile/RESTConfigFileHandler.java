@@ -2,12 +2,11 @@ package cvut.fel.sedlifil.configFile;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.visitor.VoidVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
-import cvut.fel.sedlifil.parser.MethodParser;
+import cvut.fel.sedlifil.parser.ContainerClassCU;
 import cvut.fel.sedlifil.parser.ParserClass;
 import org.slf4j.LoggerFactory;
 
@@ -50,9 +49,9 @@ public class RESTConfigFileHandler implements IConfigFileHandler {
     }
 
     @Override
-    public void generateConfigFile(Map<String, CompilationUnit> listBlock1,
-                                   Map<String, CompilationUnit> listBlock2,
-                                   Map<String, CompilationUnit> listBlock3) {
+    public void generateConfigFile(Map<String, ContainerClassCU> listBlock1,
+                                   Map<String, ContainerClassCU> listBlock2,
+                                   Map<String, ContainerClassCU> listBlock3) {
         logger.info("generating of configuration file...");
         convertToClass(listBlock1, ParserClass.BLOCK1_);
         convertToClass(listBlock2, ParserClass.BLOCK2_);
@@ -60,46 +59,49 @@ public class RESTConfigFileHandler implements IConfigFileHandler {
         saveToFile();
     }
 
-    private void convertToClass(Map<String, CompilationUnit> listBlock, String block) {
-        listBlock.forEach((K, cu) -> {
-
-            List<AnnotationExpr> annotationClassList = new ArrayList<>();
-            VoidVisitor<List<AnnotationExpr>> annotationClassVisitor = new ParserClass.AnnotationClassVisitor();
-            annotationClassVisitor.visit(cu, annotationClassList);
-
-            for (AnnotationExpr ann : annotationClassList) {
-                if (ann.getNameAsString().equals(ParserClass.BLOCK_)) {
-                    parseMethod(cu, K, block);
-                }
-            }
-        });
+    /**
+     * method for those classes which have annotation @Block to convert into ClassWithMethods container
+     *
+     * @param listBlock list of classes
+     * @param block     belongs to this block
+     */
+    private void convertToClass(Map<String, ContainerClassCU> listBlock, String block) {
+        listBlock.entrySet()
+                .stream()
+                .filter(map -> map.getValue().getBelongToBlocks().contains(block))
+                .forEach(map -> parseMethod(map.getKey(), map.getValue(), block));
     }
 
-    private void parseMethod(CompilationUnit cu, String pathName, String block) {
-        List<String> methodNames = new ArrayList<>();
-
-        VoidVisitor<List<String>> methodVisitor = new MethodNamePrinter();
-        methodVisitor.visit(cu, methodNames);
+    /**
+     * method to save classes into list in format: name, methods, block
+     *
+     * @param pathName         name with absolute path of class
+     * @param containerClassCU class
+     * @param block            belongs to this block
+     */
+    private void parseMethod(String pathName, ContainerClassCU containerClassCU, String block) {
+        List<MethodDeclaration> methodDeclarationList = containerClassCU.getMethodNames();
+        List<String> methodNames = methodDeclarationList
+                .stream()
+                .filter(this::decideMethod)
+                .map(MethodDeclaration::getNameAsString)
+                .collect(Collectors.toList());
         ClassWithMethods classWithMethods = new ClassWithMethods(pathName, methodNames, block);
-
         classWithMethodsList.add(classWithMethods);
     }
 
     private void saveToFile() {
-        //StringBuilder data = new StringBuilder();
-
-        //for (ClassWithMethods c : classWithMethodsList) {
-        //    data.append(c.toJson()).append(",");
-        //}
         ObjectMapper mapper = new ObjectMapper();
         String data = "";
         try {
 
-            data = mapper.writeValueAsString(classWithMethodsList.stream().filter(_class -> !_class.getMethodsList().isEmpty()).collect(Collectors.toList()));
+            data = mapper.writeValueAsString(classWithMethodsList.stream()
+                    .filter(_class -> !_class.getMethodsList().isEmpty())
+                    .collect(Collectors.toList()));
         } catch (JsonProcessingException e) {
-            e.printStackTrace();
+            logger.error("error with converting list of classes into json format!!!");
+            logger.error(e.toString());
         }
-
         Path savingFile = Paths.get(locationOfDirectory + ParserClass.FILE_DELIMITER + CONFIG_FILE_NAME);
         byte[] fileArray;
         fileArray = data.getBytes(StandardCharsets.UTF_8);
@@ -110,79 +112,39 @@ public class RESTConfigFileHandler implements IConfigFileHandler {
 
         } catch (FileAlreadyExistsException e) {
             logger.error("configuration file " + savingFile.toString() + " already exists, could NOT be generated again!!!");
-        }catch (IOException e) {
+        } catch (IOException e) {
             logger.error("Error with writing to file " + savingFile.toString() + "!!!");
         }
     }
 
-    private void printAllClasses() {
-        classWithMethodsList.stream()
-                .filter(_class -> !_class.getMethodsList().isEmpty())
-                .forEach(y -> System.out.println(y.toJson()));
-    }
-
-    /* public void printAllClasses() {
-        List<String> results = new ArrayList<>();
-
-
-        File[] files = new File(filePath).listFiles(new FilenameFilter() {
-            @Override
-            public boolean accept(File dir, String name) {
-                return name.endsWith(".java");
-            }
-        });
-
-        for (File file : files) {
-            if (file.isFile()) {
-                results.add(file.getName());
-            }
-        }
-
-        System.out.println("Size of all finded classes:" + results.size());
-
-
-        List<ClassWithMethods> listOfClass = results.stream()
-                .map(y -> {
-                    CompilationUnit cu = null;
-                    try {
-                        cu = JavaParser.parse(new FileInputStream(filePath.concat(FILE_DELIMITER + y)));
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
-                    }
-                    List<String> methodNames = new ArrayList<>();
-                    VoidVisitor<List<String>> methodVisitor = new MethodNamePrinter();
-                    methodVisitor.visit(cu, methodNames);
-
-                    return new ClassWithMethods(y, filePath, methodNames);
-                }).collect(Collectors.toList());
-
-        listOfClass.forEach(System.out::println);
-    } */
-
-    private static class MethodNamePrinter extends VoidVisitorAdapter<List<String>> {
-        @Override
-        public void visit(MethodDeclaration md, List<String> collector) {
-            super.visit(md, collector);
-
-            if (decideMethod(md)) {
-                collector.add(md.getNameAsString());
-            }
-        }
-
-        private boolean decideMethod(MethodDeclaration methodDeclaration) {
-            List<AnnotationExpr> annotationClassList = new ArrayList<>();
-            VoidVisitor<List<AnnotationExpr>> annotationClassVisitor = new MethodParser.AnnotationMethodVisitor();
-            annotationClassVisitor.visit(methodDeclaration, annotationClassList);
-            for (AnnotationExpr ann : annotationClassList) {
-                for (HTTP_METHODS method : HTTP_METHODS.values()) {
-                    if (ann.getNameAsString().equals(method.toString())) {
-                        return true;
-                    }
+    /**
+     * method to decide if method of class has REST HTTP annotation
+     * @param methodDeclaration method of class
+     * @return decision if method of class is REST HTTP method
+     */
+    private boolean decideMethod(MethodDeclaration methodDeclaration) {
+        List<AnnotationExpr> annotationClassList = new ArrayList<>();
+        VoidVisitor<List<AnnotationExpr>> annotationClassVisitor = new AnnotationMethodVisitor();
+        annotationClassVisitor.visit(methodDeclaration, annotationClassList);
+        for (AnnotationExpr ann : annotationClassList) {
+            for (HTTP_METHODS method : HTTP_METHODS.values()) {
+                if (ann.getNameAsString().equals(method.toString())) {
+                    return true;
                 }
             }
-            return false;
         }
+        return false;
     }
 
-
+    /**
+     * Annotation method visitor
+     * visitor fill in into list of AnnotationExpr all annotation of given method
+     */
+    private static class AnnotationMethodVisitor extends VoidVisitorAdapter<List<AnnotationExpr>> {
+        @Override
+        public void visit(MethodDeclaration n, List<AnnotationExpr> collector) {
+            super.visit(n, collector);
+            collector.addAll(n.getAnnotations());
+        }
+    }
 }

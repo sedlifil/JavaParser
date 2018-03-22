@@ -1,32 +1,20 @@
 package cvut.fel.sedlifil.parser;
 
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.FieldDeclaration;
-import com.github.javaparser.ast.body.VariableDeclarator;
-import com.github.javaparser.ast.expr.AnnotationExpr;
-import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr;
-import com.github.javaparser.ast.imports.ImportDeclaration;
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
-import com.github.javaparser.ast.visitor.VoidVisitor;
-import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import cvut.fel.sedlifil.configFile.IConfigFileHandler;
 import cvut.fel.sedlifil.fileHandler.IFileHandlerParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static javafx.application.Platform.exit;
 
@@ -39,10 +27,10 @@ public class ParserClass {
     private final IFileHandlerParser fileHandlerParser;
     private final IConfigFileHandler configFileHandler;
 
-    private Map<String, CompilationUnit> classPathWithCuMap;
-    private Map<String, CompilationUnit> classPathWithCuMapBlock1;
-    private Map<String, CompilationUnit> classPathWithCuMapBlock2;
-    private Map<String, CompilationUnit> classPathWithCuMapBlock3;
+    private Map<String, ContainerClassCU> containerClassCuMap;
+    private Map<String, ContainerClassCU> containerClassCuMapBlock1;
+    private Map<String, ContainerClassCU> containerClassCuMapBlock2;
+    private Map<String, ContainerClassCU> containerClassCuMapBlock3;
     private List<String> filesToAllBlocks;
     private boolean flagUnCategorized = true;
     public static final String BLOCK_ = "Block";
@@ -54,44 +42,56 @@ public class ParserClass {
     public static final String PomXML = "pom.xml";
     public static final String JAVA_SOURCE = ParserClass.FILE_DELIMITER + "src";
     public static final String JAVA_TARGET = "target";
-    public static final String JAVA_IMPORT_ALL_PACKAGE = "*";
+    private static final String JAVA_IMPORT_ALL_PACKAGE = "*";
+    private final MethodParser methodParser;
 
     private Logger logger;
 
+    /**
+     * @param fileHandlerParser file handler which saves divided app into files
+     * @param configFileHandler config handler which generates config file with name of class and theirs methods
+     * @param filePath          path of app which should be divided into blocks
+     */
     public ParserClass(IFileHandlerParser fileHandlerParser, IConfigFileHandler configFileHandler, String filePath) {
         this.fileHandlerParser = fileHandlerParser;
         this.configFileHandler = configFileHandler;
         this.filePath = filePath;
-        classPathWithCuMap = new HashMap<>();
-        classPathWithCuMapBlock1 = new HashMap<>();
-        classPathWithCuMapBlock2 = new HashMap<>();
-        classPathWithCuMapBlock3 = new HashMap<>();
+        methodParser = new MethodParser();
+        containerClassCuMap = new HashMap<>();
+        containerClassCuMapBlock1 = new HashMap<>();
+        containerClassCuMapBlock2 = new HashMap<>();
+        containerClassCuMapBlock3 = new HashMap<>();
         filesToAllBlocks = new ArrayList<>();
         logger = LoggerFactory.getLogger(ParserClass.class);
     }
 
+    /**
+     * main method to divide app into blocks
+     */
     public void divideIntoBlocks() {
         logger.info("JavaParser starts...");
         findAllClasses();
         splitIntoBlocks();
 
-        MethodParser methodParser = new MethodParser();
-        methodParser.categorizeMethods(classPathWithCuMapBlock1, BLOCK1_);
-        methodParser.categorizeMethods(classPathWithCuMapBlock2, BLOCK2_);
-        methodParser.categorizeMethods(classPathWithCuMapBlock3, BLOCK3_);
+        methodParser.categorizeMethods(containerClassCuMapBlock1, BLOCK1_);
+        methodParser.categorizeMethods(containerClassCuMapBlock2, BLOCK2_);
+        methodParser.categorizeMethods(containerClassCuMapBlock3, BLOCK3_);
 
-        fileHandlerParser.saveAppToFile(classPathWithCuMapBlock1,
-                classPathWithCuMapBlock2,
-                classPathWithCuMapBlock3,
+        fileHandlerParser.saveAppToFile(containerClassCuMapBlock1,
+                containerClassCuMapBlock2,
+                containerClassCuMapBlock3,
                 filesToAllBlocks);
 
-        configFileHandler.generateConfigFile(classPathWithCuMapBlock1,
-                classPathWithCuMapBlock2,
-                classPathWithCuMapBlock3);
+        configFileHandler.generateConfigFile(containerClassCuMapBlock1,
+                containerClassCuMapBlock2,
+                containerClassCuMapBlock3);
 
         logger.info("JavaParser ends.");
     }
 
+    /**
+     * method to find all directories and files of given path
+     */
     private void findAllClasses() {
         logger.info("JavaParser starts for searching files in given path: " + filePath);
         findAllClasses(filePath);
@@ -121,7 +121,6 @@ public class ParserClass {
             } else if (file.isDirectory() && !file.getName().equals(JAVA_TARGET) && !file.getName().startsWith(".")) {
                 directories.add(file.getName());
             } else if (file.getName().equals(PomXML)) {
-                //System.out.println("POM " + absPath.toString().concat(FILE_DELIMITER + file.getName()));
                 filesToAllBlocks.add(absPath.toString().concat(FILE_DELIMITER + file.getName()));
             }
         }
@@ -136,51 +135,37 @@ public class ParserClass {
     /**
      * save found classes and split into 3 set of blocks depending on annotation
      *
-     * @param path
+     * @param path path of file
      */
     private void saveClass(String path) {
-        CompilationUnit cu;
+
         try {
-            cu = JavaParser.parse(new FileInputStream(path));
+            ContainerClassCU containerClassCU = new ContainerClassCU(path);
+            boolean flagDeepCopy = false;
+            String belongToBlock = containerClassCU.getBelongToBlocks();
 
-            List<AnnotationExpr> annotationClassList = new ArrayList<>();
-            VoidVisitor<List<AnnotationExpr>> annotationClassVisitor = new AnnotationClassVisitor();
-            annotationClassVisitor.visit(cu, annotationClassList);
-
-            boolean flagDeepCopy;
-            for (AnnotationExpr ann : annotationClassList) {
-                if (ann.getNameAsString().equals(BLOCK_)) {
-                    if (!(ann instanceof SingleMemberAnnotationExpr)) {
-                        continue;
-                    }
-                    flagDeepCopy = false;
-                    SingleMemberAnnotationExpr nax = (SingleMemberAnnotationExpr) ann;
-                    /* decision where class should put in some block*/
-                    if (nax.getMemberValue().toString().contains(BLOCK1_)) {
-                        classPathWithCuMapBlock1.put(path, cu);
-                        flagDeepCopy = true;
-                    }
-                    if (nax.getMemberValue().toString().contains(BLOCK2_)) {
-                        if (flagDeepCopy) {
-                            CompilationUnit cuCopy = JavaParser.parse(new FileInputStream(path));
-                            classPathWithCuMapBlock2.put(path, cuCopy);
-                        } else {
-                            classPathWithCuMapBlock2.put(path, cu);
-                            flagDeepCopy = true;
-                        }
-                    }
-                    if (nax.getMemberValue().toString().contains(BLOCK3_)) {
-                        if (flagDeepCopy) {
-                            CompilationUnit cuCopy = JavaParser.parse(new FileInputStream(path));
-                            classPathWithCuMapBlock3.put(path, cuCopy);
-                        } else {
-                            classPathWithCuMapBlock3.put(path, cu);
-                        }
-                    }
-                }
-
+            if (belongToBlock.contains(BLOCK1_)) {
+                containerClassCuMapBlock1.put(path, containerClassCU);
+                flagDeepCopy = true;
             }
-            classPathWithCuMap.put(path, cu);
+            if (belongToBlock.contains(BLOCK2_)) {
+                if (flagDeepCopy) {
+                    ContainerClassCU containerClassCUCopy = new ContainerClassCU(path);
+                    containerClassCuMapBlock2.put(path, containerClassCUCopy);
+                } else {
+                    containerClassCuMapBlock2.put(path, containerClassCU);
+                    flagDeepCopy = true;
+                }
+            }
+            if (belongToBlock.contains(BLOCK3_)) {
+                if (flagDeepCopy) {
+                    ContainerClassCU containerClassCUCopy = new ContainerClassCU(path);
+                    containerClassCuMapBlock3.put(path, containerClassCUCopy);
+                } else {
+                    containerClassCuMapBlock3.put(path, containerClassCU);
+                }
+            }
+            containerClassCuMap.put(path, containerClassCU);
         } catch (FileNotFoundException e) {
             logger.error("Error: can not open file " + path);
             logger.info("JavaParser ends with error status.");
@@ -188,74 +173,72 @@ public class ParserClass {
         }
     }
 
+
     /**
-     * mothod which, for every xxx finds all imports and calls parse methods
+     * method which, for every list of blocks finds all imports and calls parse methods
      */
     private void splitIntoBlocks() {
         logger.info("JavaParser starts to dividing into blocks...");
-        Map<String, CompilationUnit> classBlockList = new HashMap<>();
+        Map<String, ContainerClassCU> classBlockList = new HashMap<>();
 
-        classPathWithCuMapBlock1.forEach(classBlockList::put);
+        containerClassCuMapBlock1.forEach(classBlockList::put);
         classBlockList.forEach((K, V) -> parseImportsImplementsExtended(V, BLOCK1_));
 
         classBlockList.clear();
-        classPathWithCuMapBlock2.forEach(classBlockList::put);
+        containerClassCuMapBlock2.forEach(classBlockList::put);
         classBlockList.forEach((K, V) -> parseImportsImplementsExtended(V, BLOCK2_));
 
         classBlockList.clear();
-        classPathWithCuMapBlock3.forEach(classBlockList::put);
+        containerClassCuMapBlock3.forEach(classBlockList::put);
         classBlockList.forEach((K, V) -> parseImportsImplementsExtended(V, BLOCK3_));
 
         /* until some class is placed to some block */
         while (flagUnCategorized) {
             flagUnCategorized = false;
-            classPathWithCuMap.forEach(this::parseImportsFromUncategorizedClass);
+            containerClassCuMap.forEach(this::parseImportsFromUncategorizedClass);
         }
-
     }
 
     /**
      * method to find if class is needed to be placed into some block
      *
-     * @param classNameWithPath
-     * @param cu
+     * @param classNameWithPath name of class with absolute path
      */
-    private void parseImportsFromUncategorizedClass(String classNameWithPath, CompilationUnit cu) {
-        List<String> importsImplementsExtendedFromClassded = getImplementsFromClass(cu);
-        List<String> belongToBlocksList = tryCategorizedList(classNameWithPath, cu, importsImplementsExtendedFromClassded);
-        belongToBlocksList.forEach(block -> parseImportsImplementsExtended(cu, block));
+    private void parseImportsFromUncategorizedClass(String classNameWithPath, ContainerClassCU containerClassCU) {
+        List<String> implementsFromClass = containerClassCU.getImplementsFromClass();
+        List<String> belongToBlocksList = tryCategorizedList(classNameWithPath, containerClassCU, implementsFromClass);
+        belongToBlocksList.forEach(block -> parseImportsImplementsExtended(containerClassCU, block));
     }
 
     /**
      * method to find if class is needed to be placed into some block from implements and extends
      *
-     * @param classNameWithPath
-     * @param cu
-     * @param list
-     * @return
+     * @param classNameWithPath name of class with absolute path
+     * @param list              list of implements from class
+     * @return list of blocks where class should be added
      */
-    private List<String> tryCategorizedList(String classNameWithPath, CompilationUnit cu, List<String> list) {
+    private List<String> tryCategorizedList(String classNameWithPath, ContainerClassCU containerClassCU, List<String> list) {
         List<String> resultList = new ArrayList<>();
         list.forEach(y -> {
-            for (Map.Entry<String, CompilationUnit> entry : classPathWithCuMapBlock1.entrySet()) {
+            for (Map.Entry<String, ContainerClassCU> entry : containerClassCuMapBlock1.entrySet()) {
                 if (entry.getKey().substring(0, entry.getKey().lastIndexOf(".")).endsWith(y)) {
-                    classPathWithCuMapBlock1.put(classNameWithPath, cu);
+                    containerClassCuMapBlock1.put(classNameWithPath, containerClassCU);
                     resultList.add(BLOCK1_);
                     break;
                 }
             }
 
-            for (Map.Entry<String, CompilationUnit> entry : classPathWithCuMapBlock2.entrySet()) {
+            for (Map.Entry<String, ContainerClassCU> entry : containerClassCuMapBlock2.entrySet()) {
                 if (entry.getKey().substring(0, entry.getKey().lastIndexOf(".")).endsWith(y)) {
-                    classPathWithCuMapBlock2.put(classNameWithPath, cu);
+                    containerClassCuMapBlock2.put(classNameWithPath, containerClassCU);
                     resultList.add(BLOCK2_);
                     break;
                 }
             }
 
-            for (Map.Entry<String, CompilationUnit> entry : classPathWithCuMapBlock3.entrySet()) {
+            for (Map.Entry<String, ContainerClassCU> entry : containerClassCuMapBlock3.entrySet()) {
                 if (entry.getKey().substring(0, entry.getKey().lastIndexOf(".")).endsWith(y)) {
-                    classPathWithCuMapBlock3.put(classNameWithPath, cu);
+                    containerClassCuMapBlock3.put(classNameWithPath, containerClassCU);
                     resultList.add(BLOCK3_);
                     break;
                 }
@@ -268,19 +251,17 @@ public class ParserClass {
     /**
      * method to fill into blocks every class, which is imported, extended or implemented from classNameWithPath
      *
-     * @param cu
-     * @param block
+     * @param block belongs to block
      */
-    private void parseImportsImplementsExtended(CompilationUnit cu, String block) {
-        List<String> importsImplementsExtendedFromClass = getImportsImplementsExtendedFromClass(cu);
-
-        Map<String, CompilationUnit> tempBlockList = new HashMap<>();
+    private void parseImportsImplementsExtended(ContainerClassCU containerClassCU, String block) {
+        List<String> importsImplementsExtendedFromClass = containerClassCU.getImportsImplementsExtendedFromClass();
+        Map<String, ContainerClassCU> tempBlockList = new HashMap<>();
         importsImplementsExtendedFromClass.forEach(importName -> {
-            /* need to be imported all classes from package - "*" notation */
+            /* need to be imported all classes from package -> "*" notation */
             if (importName.endsWith(JAVA_IMPORT_ALL_PACKAGE)) {
                 importAllFromPackage(tempBlockList, importName, block);
             } else {
-                classPathWithCuMap.forEach((K, V) -> {
+                containerClassCuMap.forEach((K, V) -> {
                     String kwithoutdot = K;
                     if (K.contains(JAVA_SUFFIX)) {
                         kwithoutdot = K.substring(0, K.lastIndexOf(JAVA_SUFFIX));
@@ -296,10 +277,9 @@ public class ParserClass {
                     }
                 });
             }
-
         });
-        /* list of classes, which were added to some block(s) from classes fields  */
-        Map<String, CompilationUnit> tempList = parseFieldVariables(cu, block);
+        /* list of classes, which should be added to some block(s) from classes fields  */
+        Map<String, ContainerClassCU> tempList = parseFieldVariables(containerClassCU, block);
         /* call recursively for each class in list */
         tempList.forEach((K, V) -> parseImportsImplementsExtended(V, block));
         /* for each class call recursively parseImportsImplementsExtended() method */
@@ -311,30 +291,29 @@ public class ParserClass {
      *
      * @param tempBlockList - to add founded class into list
      * @param pathName      - name of class with absolute path
-     * @param cu            - compilationUnit
      * @param block         - class belongs to block
      */
-    private void insertIntoBlock(Map<String, CompilationUnit> tempBlockList, String pathName, CompilationUnit cu, String block) {
+    private void insertIntoBlock(Map<String, ContainerClassCU> tempBlockList, String pathName, ContainerClassCU containerClassCU, String block) {
         switch (block) {
             case BLOCK1_:
-                if (!classPathWithCuMapBlock1.containsKey(pathName)) {
-                    classPathWithCuMapBlock1.put(pathName, cu);
+                if (!containerClassCuMapBlock1.containsKey(pathName)) {
+                    containerClassCuMapBlock1.put(pathName, containerClassCU);
                     flagUnCategorized = true;
-                    tempBlockList.put(pathName, cu);
+                    tempBlockList.put(pathName, containerClassCU);
                 }
                 break;
             case BLOCK2_:
-                if (!classPathWithCuMapBlock2.containsKey(pathName)) {
-                    classPathWithCuMapBlock2.put(pathName, cu);
+                if (!containerClassCuMapBlock2.containsKey(pathName)) {
+                    containerClassCuMapBlock2.put(pathName, containerClassCU);
                     flagUnCategorized = true;
-                    tempBlockList.put(pathName, cu);
+                    tempBlockList.put(pathName, containerClassCU);
                 }
                 break;
             case BLOCK3_:
-                if (!classPathWithCuMapBlock3.containsKey(pathName)) {
-                    classPathWithCuMapBlock3.put(pathName, cu);
+                if (!containerClassCuMapBlock3.containsKey(pathName)) {
+                    containerClassCuMapBlock3.put(pathName, containerClassCU);
                     flagUnCategorized = true;
-                    tempBlockList.put(pathName, cu);
+                    tempBlockList.put(pathName, containerClassCU);
                 }
                 break;
         }
@@ -342,33 +321,52 @@ public class ParserClass {
 
     /**
      * method to searched all fields of class and if it is necessary put founded class into same block
+     *
+     * @param containerClassCU class
+     * @param block            belongs to block
+     * @return list of founded classes which should be added into same block as class
      */
-    private Map<String, CompilationUnit> parseFieldVariables(CompilationUnit cu, String block) {
-        Map<String, CompilationUnit> result = new HashMap<>();
-        getFieldsFromClass(cu).stream().filter(v -> v.getType() instanceof ClassOrInterfaceType).forEach(
-                v -> {
-                    Type type = v.getType();
-                    ((ClassOrInterfaceType) type).getTypeArguments()
-                            .ifPresent(tas -> tas.forEach(y -> tryCategorizeField(result, y, cu, block)));
-                    if (!((ClassOrInterfaceType) type).getTypeArguments().isPresent()) {
-                        tryCategorizeField(result, type, cu, block);
-                    }
-                }
-        );
+    private Map<String, ContainerClassCU> parseFieldVariables(ContainerClassCU containerClassCU, String block) {
+        Map<String, ContainerClassCU> result = new HashMap<>();
+        containerClassCU.getFieldsFromClassList()
+                .stream()
+                .filter(v -> v.getType() instanceof ClassOrInterfaceType)
+                .forEach(
+                        v -> {
+                            Type type = v.getType();
+                            ((ClassOrInterfaceType) type).getTypeArguments()
+                                    .ifPresent(tas -> tas.forEach(y -> tryCategorizeField(result, y, containerClassCU, block)));
+                            if (!((ClassOrInterfaceType) type).getTypeArguments().isPresent()) {
+                                tryCategorizeField(result, type, containerClassCU, block);
+                            }
+                        }
+                );
         return result;
     }
 
     /**
      * method for those imports which ends with * -> need imports all classes from that package
+     *
+     * @param tempBlockList list into which the classes will be added
+     * @param importPath    path of import of class
+     * @param block         belongs to block
      */
-    private void importAllFromPackage(Map<String, CompilationUnit> tempBlockList, String importPath, String block) {
+    private void importAllFromPackage(Map<String, ContainerClassCU> tempBlockList, String importPath, String block) {
         String importPathAsPackageName = importPath.replaceAll(ParserClass.FILE_DELIMITER, ".")
                 .substring(0, importPath.lastIndexOf(ParserClass.JAVA_IMPORT_ALL_PACKAGE) - 1);
 
-        classPathWithCuMap.entrySet()
+        containerClassCuMap.entrySet()
                 .stream()
-                .filter(map -> map.getValue().getPackageDeclaration().isPresent())
-                .filter(map -> map.getValue().getPackageDeclaration().get().getPackageName().equals(importPathAsPackageName))
+                .filter(map -> map.getValue()
+                        .getCompilationUnit()
+                        .getPackageDeclaration()
+                        .isPresent())
+                .filter(map -> map.getValue()
+                        .getCompilationUnit()
+                        .getPackageDeclaration()
+                        .get()
+                        .getPackageName()
+                        .equals(importPathAsPackageName))
                 .forEach(map -> tempBlockList.put(map.getKey(), map.getValue()));
     }
 
@@ -377,23 +375,22 @@ public class ParserClass {
      *
      * @param list  - to add founded class into list
      * @param type  - type of Field from class
-     * @param cu    - compilationUnit
      * @param block - class belongs to block
      */
-    private void tryCategorizeField(Map<String, CompilationUnit> list, Type type, CompilationUnit cu, String block) {
-        classPathWithCuMap.forEach((K, V) -> {
+    private void tryCategorizeField(Map<String, ContainerClassCU> list, Type type, ContainerClassCU containerClassCU, String block) {
+        containerClassCuMap.forEach((K, V) -> {
             String className = K.substring(K.lastIndexOf(ParserClass.FILE_DELIMITER) + 1, K.lastIndexOf(ParserClass.JAVA_SUFFIX));
             // both classes have present pagkage
-            if (cu.getPackageDeclaration().isPresent() && V.getPackageDeclaration().isPresent()) {
+            if (containerClassCU.getCompilationUnit().getPackageDeclaration().isPresent() && V.getCompilationUnit().getPackageDeclaration().isPresent()) {
                 // packages are the same
-                if (cu.getPackageDeclaration().get().getPackageName().equals(V.getPackageDeclaration().get().getPackageName())) {
+                if (containerClassCU.getCompilationUnit().getPackageDeclaration().get().getPackageName().equals(V.getCompilationUnit().getPackageDeclaration().get().getPackageName())) {
                     //name of class and searched type has equal names
                     if (type.toString().equals(className)) {
                         insertIntoBlock(list, K, V, block);
                     }
                 }
             } // both classes do not have package
-            else if (!cu.getPackageDeclaration().isPresent() && !V.getPackageDeclaration().isPresent()) {
+            else if (!containerClassCU.getCompilationUnit().getPackageDeclaration().isPresent() && !V.getCompilationUnit().getPackageDeclaration().isPresent()) {
                 //name of class and searched type has equal names
                 if (type.toString().equals(className)) {
                     insertIntoBlock(list, K, V, block);
@@ -403,159 +400,34 @@ public class ParserClass {
     }
 
     /**
-     * method to found all field variable of the class
-     *
-     * @param cu
-     * @return list of variables
+     * get map of containerClassCu of block 1
+     * @return map of containerClassCu of block 1
      */
-    private List<VariableDeclarator> getFieldsFromClass(CompilationUnit cu) {
-        List<VariableDeclarator> variableDeclaratorList = new ArrayList<>();
-        VoidVisitor<List<VariableDeclarator>> variableClassVisitor = new FieldClassVisitor();
-        variableClassVisitor.visit(cu, variableDeclaratorList);
-        return variableDeclaratorList;
+    public Map<String, ContainerClassCU> getContainerClassCuMapBlock1() {
+        return containerClassCuMapBlock1;
     }
 
     /**
-     * method to get all implemented class names with path from given compilationUnit
-     *
-     * @param cu
-     * @return list of implements path
+     * get map of containerClassCu of block 2
+     * @return map of containerClassCu of block 2
      */
-    private List<String> getImplementsFromClass(CompilationUnit cu) {
-        List<String> implementsClassList = new ArrayList<>();
-        VoidVisitor<List<String>> implementsClassVisitor = new ImplementsClassVisitor();
-        implementsClassVisitor.visit(cu, implementsClassList);
-        return implementsClassList;
+    public Map<String, ContainerClassCU> getContainerClassCuMapBlock2() {
+        return containerClassCuMapBlock2;
     }
 
     /**
-     * method to get all imported,implemented and extended class names with path from given compilationUnit
-     *
-     * @param cu
-     * @return
+     * get map of containerClassCu of block 3
+     * @return map of containerClassCu of block 3
      */
-    private List<String> getImportsImplementsExtendedFromClass(CompilationUnit cu) {
-        List<ImportDeclaration> imports = cu.getImports();
-        List<String> importsImplementsExtendedList = addImportsAsClassName(imports);
-        List<String> implementsClassList = new ArrayList<>();
-
-        VoidVisitor<List<String>> implementsClassVisitor = new ImplementsClassVisitor();
-        implementsClassVisitor.visit(cu, implementsClassList);
-        importsImplementsExtendedList.addAll(implementsClassList);
-
-        List<String> extendedClassList = new ArrayList<>();
-        VoidVisitor<List<String>> extendedClassVisitor = new ExtendedClassVisitor();
-        extendedClassVisitor.visit(cu, extendedClassList);
-        importsImplementsExtendedList.addAll(extendedClassList);
-        return importsImplementsExtendedList;
+    public Map<String, ContainerClassCU> getContainerClassCuMapBlock3() {
+        return containerClassCuMapBlock3;
     }
 
     /**
-     * method to get all implemented and extended class name with path from given compilationUnit
-     *
-     * @param cu
-     * @return
+     * get list of important files of app
+     * @return list of important files of app
      */
-    private List<String> getImplementsExtendedFromClass(CompilationUnit cu) {
-        List<String> implementsExtendedList = new ArrayList<>();
-        VoidVisitor<List<String>> implementsClassVisitor = new ImplementsClassVisitor();
-        implementsClassVisitor.visit(cu, implementsExtendedList);
-
-        //zavolani tridy ClassVisitor a ulozeni vsech extendujicich trid do listu
-        List<String> extendedClassList = new ArrayList<>();
-        VoidVisitor<List<String>> extendedClassVisitor = new ExtendedClassVisitor();
-        extendedClassVisitor.visit(cu, extendedClassList);
-        implementsExtendedList.addAll(extendedClassList);
-        return implementsExtendedList;
-    }
-
-    /**
-     * method to get all imported class name with path from given compilationUnit
-     *
-     * @param cu
-     * @return
-     */
-    private List<String> getImportsFromClass(CompilationUnit cu) {
-        List<ImportDeclaration> importsList = cu.getImports();
-        return addImportsAsClassName(importsList);
-    }
-
-
-    /**
-     * method to change raw line with imports to look like ordinary class name with path
-     * using delimiter - JAVA_DELIMITER
-     *
-     * @param imports
-     * @return
-     */
-    private List<String> addImportsAsClassName(List<ImportDeclaration> imports) {
-        /* edit import to look like class name with absolute path
-         * remove ; and word "import" in front of it
-         * replace "." to "/"
-         * */
-        return imports.stream().map(y -> {
-            String import_ = y.toString();
-            return import_.substring(import_.indexOf(" ") + 1, import_.lastIndexOf(";"))
-                    .replace(".", FILE_DELIMITER);
-
-        }).collect(Collectors.toList());
-    }
-
-
-    public Map<String, CompilationUnit> getClassPathWithCuMap() {
-        return classPathWithCuMap;
-    }
-
-    public Map<String, CompilationUnit> getClassPathWithCuMapBlock1() {
-        return classPathWithCuMapBlock1;
-    }
-
-    public Map<String, CompilationUnit> getClassPathWithCuMapBlock2() {
-        return classPathWithCuMapBlock2;
-    }
-
-    public Map<String, CompilationUnit> getClassPathWithCuMapBlock3() {
-        return classPathWithCuMapBlock3;
-    }
-
     public List<String> getFilesToAllBlocks() {
         return filesToAllBlocks;
     }
-
-    /**
-     * Visitor, ktery ulozi do listu collector vsechny anotace dane tridy
-     */
-    public static class AnnotationClassVisitor extends VoidVisitorAdapter<List<AnnotationExpr>> {
-        @Override
-        public void visit(ClassOrInterfaceDeclaration n, List<AnnotationExpr> collector) {
-            super.visit(n, collector);
-            collector.addAll(n.getAnnotations());
-        }
-    }
-
-    private static class ExtendedClassVisitor extends VoidVisitorAdapter<List<String>> {
-        @Override
-        public void visit(ClassOrInterfaceDeclaration md, List<String> collector) {
-            super.visit(md, collector);
-            md.getExtendedTypes().forEach(y -> collector.add(y.getNameAsString()));
-        }
-    }
-
-    private static class ImplementsClassVisitor extends VoidVisitorAdapter<List<String>> {
-        @Override
-        public void visit(ClassOrInterfaceDeclaration md, List<String> collector) {
-            super.visit(md, collector);
-            md.getImplementedTypes().forEach(y -> collector.add(y.getNameAsString()));
-        }
-    }
-
-    private static class FieldClassVisitor extends VoidVisitorAdapter<List<VariableDeclarator>> {
-        @Override
-        public void visit(FieldDeclaration md, List<VariableDeclarator> collector) {
-            super.visit(md, collector);
-            collector.addAll(md.getVariables());
-        }
-    }
-
-
 }

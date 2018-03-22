@@ -1,6 +1,5 @@
 package cvut.fel.sedlifil.parser;
 
-import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr;
@@ -20,17 +19,26 @@ public class MethodParser {
         logger = LoggerFactory.getLogger(MethodParser.class);
     }
 
-    public void categorizeMethods(Map<String, CompilationUnit> compilationUnitMap, String block) {
+    /**
+     * method to categorize method of class into proper blocks
+     * @param containerClassCUMap class
+     * @param block class belongs to block
+     */
+    public void categorizeMethods(Map<String, ContainerClassCU> containerClassCUMap, String block) {
         logger.info("starts to categorized methods into block with " + block + "...");
-        List<MethodDeclaration> methodClassList = new ArrayList<>();
-        VoidVisitor<List<MethodDeclaration>> methodDeclaration = new MethodName();
-        compilationUnitMap.forEach((K, V) -> {
-            methodClassList.clear();
-            methodDeclaration.visit(V, methodClassList);
+
+        containerClassCUMap.forEach((K, containerClassCU) -> {
+            List<MethodDeclaration> methodClassList;
+            methodClassList = containerClassCU.getMethodNames();
             methodClassList.forEach(y -> categorizeMethod(y, block));
         });
     }
 
+    /**
+     * method to find annotation @Block of method and decide if belongs to given block or not
+     * @param methodDeclaration method of class
+     * @param block class belongs to block
+     */
     private void categorizeMethod(MethodDeclaration methodDeclaration, String block) {
         List<AnnotationExpr> annotationClassList = new ArrayList<>();
         VoidVisitor<List<AnnotationExpr>> annotationClassVisitor = new AnnotationMethodVisitor();
@@ -41,11 +49,7 @@ public class MethodParser {
                 if (!(ann instanceof SingleMemberAnnotationExpr)) {
                     continue;
                 }
-
                 SingleMemberAnnotationExpr nax = (SingleMemberAnnotationExpr) ann;
-
-               // System.out.println(nax.getMemberValue());
-
                 if (!nax.getMemberValue().toString().contains(block)) {
                     methodDeclaration.remove();
                     break;
@@ -53,16 +57,11 @@ public class MethodParser {
             }
         }
     }
-
-    private static class MethodName extends VoidVisitorAdapter<List<MethodDeclaration>> {
-        @Override
-        public void visit(MethodDeclaration md, List<MethodDeclaration> collector) {
-            super.visit(md, collector);
-            collector.add(md);
-        }
-    }
-
-    public static class AnnotationMethodVisitor extends VoidVisitorAdapter<List<AnnotationExpr>> {
+    /**
+     * Annotation method visitor
+     * visitor fill in into list of AnnotationExpr all annotation of given method
+     */
+    private static class AnnotationMethodVisitor extends VoidVisitorAdapter<List<AnnotationExpr>> {
         @Override
         public void visit(MethodDeclaration n, List<AnnotationExpr> collector) {
             super.visit(n, collector);

@@ -108,10 +108,10 @@ public class RESTConfigFileHandler implements IConfigFileHandler {
         try {
             Files.createFile(savingFile);
             Files.write(savingFile, fileArray);
-            logger.info("configuration file is located in " + savingFile.toString() + ".");
+            logger.info("configuration file is located in " + savingFile.toAbsolutePath() + ".");
 
         } catch (FileAlreadyExistsException e) {
-            logger.error("configuration file " + savingFile.toString() + " already exists, could NOT be generated again!!!");
+            logger.error("configuration file " + savingFile.toAbsolutePath() + " already exists, could NOT be generated again!!!");
         } catch (IOException e) {
             logger.error("Error with writing to file " + savingFile.toString() + "!!!");
         }

@@ -27,7 +27,7 @@ public class MethodParser {
      * @param block               class belongs to block
      */
     public void categorizeMethods(Map<String, ContainerClassCU> containerClassCUMap, String block) {
-        logger.info("starts to categorized methods into block with " + block + "...");
+        logger.info("starts to categorize methods into block with " + block + "...");
 
         containerClassCUMap.forEach((K, containerClassCU) -> {
             List<MethodDeclaration> methodClassList;
@@ -64,7 +64,7 @@ public class MethodParser {
 
     private void methodInSomeBlockReport(String tryingMethod, String methodName, ContainerClassCU containerClassCU) {
         List<String> list = Arrays.asList(containerClassCU.getBelongToBlocks().split("\""));
-        if (list.stream().filter(w -> w.contains(ParserClass.UNIVERSAL_BLOCK_KEY)).noneMatch(tryingMethod::contains)){
+        if (list.stream().filter(w -> w.contains(ParserClass.UNIVERSAL_BLOCK_KEY)).noneMatch(tryingMethod::contains)) {
             logger.warn("method " + methodName + " from " + containerClassCU.getNameClass() + " is NOT generated in any block!!!");
         }
     }

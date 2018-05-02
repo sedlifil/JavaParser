@@ -24,6 +24,7 @@ public class FileHandlerParser implements IFileHandlerParser {
     private String locationOfDirectory;
     private static final String DATE_PATTERN = "yyyy_MM_dd_HH-mm-ss";
     private static final String APP_NONAME = "unKnown";
+    private static final String GENERATED_ADDR = "/generatedFiles";
     private Logger logger;
 
     /**
@@ -40,7 +41,8 @@ public class FileHandlerParser implements IFileHandlerParser {
      */
     public FileHandlerParser() {
         locationOfDirectory = FileHandlerParser.class.getProtectionDomain().getCodeSource().getLocation().getPath();
-        locationOfDirectory = locationOfDirectory.substring(0, locationOfDirectory.indexOf(ParserClass.JAVA_TARGET) - 1);
+        locationOfDirectory = locationOfDirectory.substring(0, locationOfDirectory.indexOf(ParserClass.JAVA_TARGET) - 1)
+                + GENERATED_ADDR;
         logger = LoggerFactory.getLogger(FileHandlerParser.class);
 
     }
@@ -50,7 +52,7 @@ public class FileHandlerParser implements IFileHandlerParser {
                               Map<String, ContainerClassCU> listBlock2,
                               Map<String, ContainerClassCU> listBlock3,
                               List<String> listAllBlock) {
-        logger.info("starts to saving app into blocks...");
+        logger.info("starts saving app into blocks...");
         DateFormat dateFormat = new SimpleDateFormat(DATE_PATTERN);
         Date date = new Date();
 
@@ -67,7 +69,7 @@ public class FileHandlerParser implements IFileHandlerParser {
             return;
         }
         String directoryOfApp = locationOfDirectory + AppName + dateFormat.format(date);
-        logger.info("generated app is located in " + directoryOfApp + ".");
+        logger.info("generated app is located in " + Paths.get(directoryOfApp).toAbsolutePath() + ".");
 
         if (!Files.exists(Paths.get(directoryOfApp))) {
             try {

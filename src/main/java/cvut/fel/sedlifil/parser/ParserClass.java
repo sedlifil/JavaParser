@@ -26,6 +26,7 @@ public class ParserClass {
     private final String filePath;
     private final IFileHandlerParser fileHandlerParser;
     private final IConfigFileHandler configFileHandler;
+    private final String[] filesName;
 
     private Map<String, ContainerClassCU> containerClassCuMap;
     private Map<String, ContainerClassCU> containerClassCuMapBlock1;
@@ -44,6 +45,7 @@ public class ParserClass {
     public static final String JAVA_SOURCE = ParserClass.FILE_DELIMITER + "src";
     public static final String JAVA_TARGET = "target";
     private static final String JAVA_IMPORT_ALL_PACKAGE = "*";
+    private static final int ERROR_CODE = 1;
     private final MethodParser methodParser;
 
     private Logger logger;
@@ -53,10 +55,11 @@ public class ParserClass {
      * @param configFileHandler config handler which generates config file with name of class and theirs methods
      * @param filePath          path of app which should be divided into blocks
      */
-    public ParserClass(IFileHandlerParser fileHandlerParser, IConfigFileHandler configFileHandler, String filePath) {
+    public ParserClass(IFileHandlerParser fileHandlerParser, IConfigFileHandler configFileHandler, String filePath, String []filesName) {
         this.fileHandlerParser = fileHandlerParser;
         this.configFileHandler = configFileHandler;
         this.filePath = filePath;
+        this.filesName = filesName;
         methodParser = new MethodParser();
         containerClassCuMap = new HashMap<>();
         containerClassCuMapBlock1 = new HashMap<>();
@@ -70,6 +73,17 @@ public class ParserClass {
      * main method to divide app into blocks
      */
     public void divideIntoBlocks() {
+        divideIntoBlocks(true, true);
+
+    }
+
+    /**
+     * main method to divide app into blocks with two parameters
+     *
+     * @param generatedFiles to generated target app infrastructure divided into modules
+     * @param generatedConfigFiles to generate configFile of target app divided into modules
+     */
+    public void divideIntoBlocks(boolean generatedFiles, boolean generatedConfigFiles) {
         logger.info("JavaParser starts...");
         findAllClasses();
         splitIntoBlocks();
@@ -78,14 +92,19 @@ public class ParserClass {
         methodParser.categorizeMethods(containerClassCuMapBlock2, BLOCK2_);
         methodParser.categorizeMethods(containerClassCuMapBlock3, BLOCK3_);
 
-        fileHandlerParser.saveAppToFile(containerClassCuMapBlock1,
-                containerClassCuMapBlock2,
-                containerClassCuMapBlock3,
-                filesToAllBlocks);
+        if (generatedFiles) {
+            fileHandlerParser.saveAppToFile(containerClassCuMapBlock1,
+                    containerClassCuMapBlock2,
+                    containerClassCuMapBlock3,
+                    filesToAllBlocks);
+        }
 
-        configFileHandler.generateConfigFile(containerClassCuMapBlock1,
-                containerClassCuMapBlock2,
-                containerClassCuMapBlock3);
+        if (generatedConfigFiles) {
+            configFileHandler.generateConfigFile(containerClassCuMapBlock1,
+                    containerClassCuMapBlock2,
+                    containerClassCuMapBlock3);
+        }
+
 
         logger.info("JavaParser ends.");
     }
@@ -113,7 +132,7 @@ public class ParserClass {
         if (files == null) {
             logger.error("There is no directory or file in this path.");
             logger.error("JavaParser exits!");
-            return;
+            System.exit(ERROR_CODE);
         }
 
         for (File file : files) {
@@ -123,11 +142,17 @@ public class ParserClass {
                 directories.add(file.getName());
             } else if (file.getName().equals(PomXML)) {
                 filesToAllBlocks.add(absPath.toString().concat(FILE_DELIMITER + file.getName()));
+            }else {
+                for (String aFilesName : filesName) {
+                    if (file.getName().equals(aFilesName)) {
+                        filesToAllBlocks.add(absPath.toString().concat(FILE_DELIMITER + file.getName()));
+                    }
+                }
             }
         }
         classNameList.forEach(y -> saveClass(absPath.toString().concat(FILE_DELIMITER + y)));
 
-        /* recursion for founded directories */
+        /* recursion for found directories */
         for (String s : directories) {
             findAllClasses(path.concat(FILE_DELIMITER + s));
         }
@@ -290,7 +315,7 @@ public class ParserClass {
     /**
      * method to decide where to put class based on block
      *
-     * @param tempBlockList - to add founded class into list
+     * @param tempBlockList - to add found class into list
      * @param pathName      - name of class with absolute path
      * @param block         - class belongs to block
      */
@@ -321,11 +346,11 @@ public class ParserClass {
     }
 
     /**
-     * method to searched all fields of class and if it is necessary put founded class into same block
+     * method to searched all fields of class and if it is necessary put found class into same block
      *
      * @param containerClassCU class
      * @param block            belongs to block
-     * @return list of founded classes which should be added into same block as class
+     * @return list of found classes which should be added into same block as class
      */
     private Map<String, ContainerClassCU> parseFieldVariables(ContainerClassCU containerClassCU, String block) {
         Map<String, ContainerClassCU> result = new HashMap<>();
@@ -374,7 +399,7 @@ public class ParserClass {
     /**
      * check all fields from class and figure it out if some field do not need import some class from same package
      *
-     * @param list  - to add founded class into list
+     * @param list  - to add found class into list
      * @param type  - type of Field from class
      * @param block - class belongs to block
      */
@@ -402,6 +427,7 @@ public class ParserClass {
 
     /**
      * get map of containerClassCu of block 1
+     *
      * @return map of containerClassCu of block 1
      */
     public Map<String, ContainerClassCU> getContainerClassCuMapBlock1() {
@@ -410,6 +436,7 @@ public class ParserClass {
 
     /**
      * get map of containerClassCu of block 2
+     *
      * @return map of containerClassCu of block 2
      */
     public Map<String, ContainerClassCU> getContainerClassCuMapBlock2() {
@@ -418,6 +445,7 @@ public class ParserClass {
 
     /**
      * get map of containerClassCu of block 3
+     *
      * @return map of containerClassCu of block 3
      */
     public Map<String, ContainerClassCU> getContainerClassCuMapBlock3() {
@@ -426,6 +454,7 @@ public class ParserClass {
 
     /**
      * get list of important files of app
+     *
      * @return list of important files of app
      */
     public List<String> getFilesToAllBlocks() {

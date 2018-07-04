@@ -3,6 +3,7 @@ package cvut.fel.sedlifil.parser;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.AnnotationExpr;
 import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr;
+import com.github.javaparser.ast.nodeTypes.NodeWithName;
 import com.github.javaparser.ast.visitor.VoidVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import org.slf4j.Logger;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class MethodParser {
     private Logger logger;
@@ -29,11 +31,14 @@ public class MethodParser {
     public void categorizeMethods(Map<String, ContainerClassCU> containerClassCUMap, String block) {
         logger.info("starts to categorize methods into block with " + block + "...");
 
-        containerClassCUMap.forEach((K, containerClassCU) -> {
-            List<MethodDeclaration> methodClassList;
-            methodClassList = containerClassCU.getMethodNames();
-            methodClassList.forEach(y -> categorizeMethod(y, containerClassCU, block));
-        });
+        containerClassCUMap.entrySet()
+                .stream().
+                filter(y -> !y.getValue().getBelongToBlocks().equals(""))
+                .forEach(y -> {
+                    List<MethodDeclaration> methodClassList;
+                    methodClassList = y.getValue().getMethodDeclarations();
+                    methodClassList.forEach(z -> categorizeMethod(z, y.getValue(), block, containerClassCUMap));
+                });
     }
 
     /**
@@ -42,7 +47,8 @@ public class MethodParser {
      * @param methodDeclaration method of class
      * @param block             class belongs to block
      */
-    private void categorizeMethod(MethodDeclaration methodDeclaration, ContainerClassCU classCU, String block) {
+    private void categorizeMethod(MethodDeclaration methodDeclaration, ContainerClassCU classCU, String block,
+                                  Map<String, ContainerClassCU> containerClassCUMap) {
         List<AnnotationExpr> annotationClassList = new ArrayList<>();
         VoidVisitor<List<AnnotationExpr>> annotationClassVisitor = new AnnotationMethodVisitor();
         annotationClassVisitor.visit(methodDeclaration, annotationClassList);
@@ -56,6 +62,19 @@ public class MethodParser {
                 if (!nax.getMemberValue().toString().contains(block)) {
                     methodInSomeBlockReport(nax.getMemberValue().toString(), methodDeclaration.getNameAsString(), classCU);
                     methodDeclaration.remove();
+                    /* also remove "override method" from implemented or extended class */
+                    containerClassCUMap.forEach((k, v) -> {
+                        List<String> list = v.getImplementsExtendedFromClass();
+                        if(list.stream().anyMatch(classCU.getNameClass()::contains)){
+                            List<MethodDeclaration> declarationList = v.getMethodDeclarations().stream()
+                                    .filter(y -> y.getName().equals(methodDeclaration.getName()))
+                                    .filter( y -> y.getAnnotations().stream().anyMatch(an -> an.getNameAsString().contains("Override")))
+                                    .collect(Collectors.toList());
+                            for (MethodDeclaration m:declarationList) {
+                                m.remove();
+                            }
+                        }
+                    });
                     break;
                 }
             }

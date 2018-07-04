@@ -1,4 +1,4 @@
-package cvut.fel.sedlifil.configFile;
+package cvut.fel.sedlifil.configHandler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -80,7 +80,7 @@ public class RESTConfigFileHandler implements IConfigFileHandler {
      * @param block            belongs to this block
      */
     private void parseMethod(String pathName, ContainerClassCU containerClassCU, String block) {
-        List<MethodDeclaration> methodDeclarationList = containerClassCU.getMethodNames();
+        List<MethodDeclaration> methodDeclarationList = containerClassCU.getMethodDeclarations();
         List<String> methodNames = methodDeclarationList
                 .stream()
                 .filter(this::decideMethod)

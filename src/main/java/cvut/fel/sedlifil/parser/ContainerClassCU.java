@@ -36,7 +36,11 @@ public class ContainerClassCU {
     }
 
     private void setUpName() {
-        String list[] = nameClassWithAbsPath.split(ParserClass.FILE_DELIMITER);
+        String reg = ParserClass.FILE_DELIMITER;
+        if(reg.equals("\\")){
+            reg = "\\\\";
+        }
+        String list[] = nameClassWithAbsPath.split(reg);
         nameClass = list[list.length - 1];
     }
 
@@ -145,7 +149,7 @@ public class ContainerClassCU {
     /**
      * @return list of methods of container class
      */
-    public List<MethodDeclaration> getMethodNames() {
+    public List<MethodDeclaration> getMethodDeclarations() {
         List<MethodDeclaration> methodNames = new ArrayList<>();
         VoidVisitor<List<MethodDeclaration>> methodVisitor = new MethodClassVisitor();
         methodVisitor.visit(compilationUnit, methodNames);

@@ -2,13 +2,12 @@ package cvut.fel.sedlifil.parser;
 
 import com.github.javaparser.ast.type.ClassOrInterfaceType;
 import com.github.javaparser.ast.type.Type;
-import cvut.fel.sedlifil.configFile.IConfigFileHandler;
+import cvut.fel.sedlifil.configHandler.IConfigFileHandler;
 import cvut.fel.sedlifil.fileHandler.IFileHandlerParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -16,7 +15,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static javafx.application.Platform.exit;
 
 /**
  * Created by filip on 01.11.17.
@@ -55,7 +53,7 @@ public class ParserClass {
      * @param configFileHandler config handler which generates config file with name of class and theirs methods
      * @param filePath          path of app which should be divided into blocks
      */
-    public ParserClass(IFileHandlerParser fileHandlerParser, IConfigFileHandler configFileHandler, String filePath, String []filesName) {
+    public ParserClass(IFileHandlerParser fileHandlerParser, IConfigFileHandler configFileHandler, String filePath, String[] filesName) {
         this.fileHandlerParser = fileHandlerParser;
         this.configFileHandler = configFileHandler;
         this.filePath = filePath;
@@ -80,8 +78,8 @@ public class ParserClass {
     /**
      * main method to divide app into blocks with two parameters
      *
-     * @param generatedFiles to generated target app infrastructure divided into modules
-     * @param generatedConfigFiles to generate configFile of target app divided into modules
+     * @param generatedFiles       to generated target app infrastructure divided into modules
+     * @param generatedConfigFiles to generate configHandler of target app divided into modules
      */
     public void divideIntoBlocks(boolean generatedFiles, boolean generatedConfigFiles) {
         logger.info("JavaParser starts...");
@@ -137,12 +135,14 @@ public class ParserClass {
 
         for (File file : files) {
             if (file.isFile() && file.getName().endsWith(JAVA_SUFFIX)) {
-                classNameList.add(file.getName());
+                if (!file.getName().startsWith("._")) {
+                    classNameList.add(file.getName());
+                }
             } else if (file.isDirectory() && !file.getName().equals(JAVA_TARGET) && !file.getName().startsWith(".")) {
                 directories.add(file.getName());
             } else if (file.getName().equals(PomXML)) {
                 filesToAllBlocks.add(absPath.toString().concat(FILE_DELIMITER + file.getName()));
-            }else {
+            } else {
                 for (String aFilesName : filesName) {
                     if (file.getName().equals(aFilesName)) {
                         filesToAllBlocks.add(absPath.toString().concat(FILE_DELIMITER + file.getName()));
@@ -192,10 +192,10 @@ public class ParserClass {
                 }
             }
             containerClassCuMap.put(path, containerClassCU);
-        } catch (FileNotFoundException e) {
+        } catch (Exception e) {
             logger.error("Error: can not open file " + path);
             logger.info("JavaParser ends with error status.");
-            exit();
+            System.exit(13);
         }
     }
 
@@ -378,7 +378,11 @@ public class ParserClass {
      * @param block         belongs to block
      */
     private void importAllFromPackage(Map<String, ContainerClassCU> tempBlockList, String importPath, String block) {
-        String importPathAsPackageName = importPath.replaceAll(ParserClass.FILE_DELIMITER, ".")
+        String reg = FILE_DELIMITER;
+        if (reg.equals("\\")) {
+            reg = "\\\\";
+        }
+        String importPathAsPackageName = importPath.replaceAll(reg, ".")
                 .substring(0, importPath.lastIndexOf(ParserClass.JAVA_IMPORT_ALL_PACKAGE) - 1);
 
         containerClassCuMap.entrySet()
@@ -392,7 +396,7 @@ public class ParserClass {
                         .getPackageDeclaration()
                         .get()
                         .getPackageName()
-                        .equals(importPathAsPackageName))
+                        .contains(importPathAsPackageName))
                 .forEach(map -> tempBlockList.put(map.getKey(), map.getValue()));
     }
 

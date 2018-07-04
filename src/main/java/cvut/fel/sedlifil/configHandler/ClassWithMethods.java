@@ -1,4 +1,4 @@
-package cvut.fel.sedlifil.configFile;
+package cvut.fel.sedlifil.configHandler;
 
 import java.util.List;
 

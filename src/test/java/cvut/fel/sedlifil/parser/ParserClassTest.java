@@ -1,7 +1,7 @@
 package cvut.fel.sedlifil.parser;
 
-import cvut.fel.sedlifil.configFile.IConfigFileHandler;
-import cvut.fel.sedlifil.configFile.RESTConfigFileHandler;
+import cvut.fel.sedlifil.configHandler.IConfigFileHandler;
+import cvut.fel.sedlifil.configHandler.RESTConfigFileHandler;
 import cvut.fel.sedlifil.fileHandler.FileHandlerParser;
 import cvut.fel.sedlifil.fileHandler.IFileHandlerParser;
 import org.apache.log4j.BasicConfigurator;
@@ -13,8 +13,6 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.mock;
-
-import static org.junit.Assert.*;
 
 public class ParserClassTest {
 
@@ -83,6 +81,14 @@ public class ParserClassTest {
 
         assertEquals(list3.size(), parserClass.getContainerClassCuMapBlock3().size());
 
-        assertEquals("List with other files except of *.java should be emplty", 0, parserClass.getFilesToAllBlocks().size());
+        assertEquals("List with other files except of *.java should have only one file - pom.xml",
+                1, parserClass.getFilesToAllBlocks().size());
+
+        parserClass.getFilesToAllBlocks().forEach(
+                file -> assertEquals("List with other files except of *.java should have only one file - pom.xml",
+                        Paths.get("./src/testFiles/BookSystem/pom.xml").toAbsolutePath().toString()
+
+                                , file ));
+
     }
 }

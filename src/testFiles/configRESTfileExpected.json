@@ -1,0 +1,1 @@
+[{"className":"AuthorRegistrationRESTController","block":"key1","methodsList":["findAll","findById","save"]},{"className":"LibraryRegistrationRESTController","block":"key2","methodsList":["findAll","findById","save"]}]
